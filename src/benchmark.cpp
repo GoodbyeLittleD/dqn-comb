@@ -36,12 +36,12 @@ int main() {
 
       // second step is action.
       char action;
-      if (g.turn < 15) {
-        action = straight.getAction(g);
-      } else {
-        action = deep2.getAction(g);
-      }
-      // action = deep2.getAction(g);
+      // if (g.turn < 15) {
+      //   action = straight.getAction(g);
+      // } else {
+      //   action = deep2.getAction(g);
+      // }
+      action = straight.getAction(g);
       g.step(action);
       // printf("action = %d\n\n", (int)action);
     }

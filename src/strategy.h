@@ -65,25 +65,28 @@ double getExpScore(const Game& g) {
   //        cardList[0][1], cardList[0][2], cardList[1][0], cardList[1][1], cardList[1][2],
   //        cardList[2][0], cardList[2][1], cardList[2][2]);
 
+  // copy from https://github.com/jeffxzy/NumcombSolver
   double ret = 0, waiting[10] = {0}, decide[20][2] = {0};
-  int blockCount = 0, lastNum = 0, lastScore = 0, desired[10] = {0}, needs[10] = {0};
+  int blockCount = 0, lastNum = 0, desired[10] = {0}, needs[10] = {0};
   Status status;
   int length, score, num, filled;
-  double scale, times;
+  double scale, times, lastScore = 0;
 
+  // 当前已经放下几块
   for (int i = 0; i < 20; i++)
     if (cardList[i][0]) blockCount++;
 
+  // 计算0方块的分数
   if (cardList[0][0] == 0) {
     ret += vars[10];
   } else {
     ret += cardList[0][0] + cardList[0][1] + cardList[0][2];
   }
 
-  // printf("after first step, ret = %lf\n", ret);
-
+  // 对于每一行
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 5; j++) {
+      // 原代码中的rowStatus
       length = 5 - abs(j - 2);
       score = 0;
       num = 0;
@@ -123,8 +126,10 @@ double getExpScore(const Game& g) {
 
       ret += scale * score;
 
+      // 越后期，已连通的价值越高。
       if (status != FULL) ret -= scale * (1 - pow(0.993, blockCount)) * score;
 
+      // 尽可能使得游戏开局没有相邻元素，变量var[7]。
       if (blockCount < 10) {
         if (status == PARTIAL) {
           if (num == lastNum && num != 0 && num != 10) {
@@ -137,37 +142,39 @@ double getExpScore(const Game& g) {
           lastNum = 0;
           lastScore = 0;
         }
+        // 尽可能使得游戏开局不破坏行。
         if (status == BROKEN) {
           ret -= sqrt(num);
         }
       }
+      // 尽可能使得游戏开局不一次开太多行，变量var[6]。
       if (num != 0 && num != 10 && status == PARTIAL) {
         desired[num] += length - filled;
         waiting[num] += scale * score;
       }
+      // 降低交错点的期望得分，变量var[8], var[9]。
       if (status == PARTIAL) {
         for (int k = 0; k < length; k++) {
-          decide[LINES[i][j][k]][0] += 1;
-          decide[LINES[i][j][k]][1] += scale * score;
+          if (cardList[LINES[i][j][k]][0] == 0) {
+            decide[LINES[i][j][k]][0] += 1;
+            decide[LINES[i][j][k]][1] += scale * score;
+          }
         }
       }
+      // 计算每个数字有多少行
       if (num != 0 && num != 10) {
         needs[num]++;
       }
     }
   }
-
-  // printf("after second step, ret = %lf\n", ret);
-
+  // 降低多排得分比例
   for (int i = 1; i <= 9; i++) {
     if (!(desired[i] < 5 || needs[i] < 3)) {
       ret -= pow(desired[i] * vars[6] / 10, 2) * waiting[i];
     }
   }
-
-  // printf("after third step, ret = %lf\n", ret);
-
-  scale = pow(blockCount / 20, 2);
+  // 降低交点牌得分概率
+  scale = pow(blockCount / 20.0, 2);
   times = 0.4;
   for (int i = 0; i < 20; i++) {
     if (cardList[i][0] == 10) {
@@ -175,20 +182,14 @@ double getExpScore(const Game& g) {
       break;
     }
   }
-
-  // printf("after fourth step, ret = %lf\n", ret);
-
   scale *= times;
   for (int i = 0; i < 20; i++) {
-    if (abs(decide[i][0] - 2 < 1e-3)) {
+    if (abs(decide[i][0] - 2) < 1e-3) {
       ret -= scale * vars[8] * decide[i][1];
-    } else if (abs(decide[i][0] - 3 < 1e-3)) {
+    } else if (abs(decide[i][0] - 3) < 1e-3) {
       ret -= scale * vars[9] * decide[i][1];
     }
   }
-
-  // printf("after final step, ret = %lf\n", ret);
-
   return ret;
 }
 

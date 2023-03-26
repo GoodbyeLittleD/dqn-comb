@@ -11,6 +11,7 @@ const int SAMPLE_TIMES = 200;
 std::mt19937 rng(std::random_device{}());
 
 int main() {
+  freopen("data.txt", "w", stdout);
   std::string actions;
   float probs[28];
   StraightStrategy straight;
