@@ -8,17 +8,20 @@
 
 // 每个样本随机的次数
 const int SAMPLE_TIMES = 200;
+// 线程数（TODO）
+const int NUMBER_THREADS = 8;
 
 std::mt19937 rng(std::random_device{}());
 
-int main() {
+void work() {
   std::string outputFile;
   for (int i = 1;; i++) {
     outputFile = "data_" + std::to_string(i) + ".txt";
     if (std::filesystem::exists(outputFile)) continue;
     break;
   }
-  freopen("data.txt", "w", stdout);
+  auto fp = fopen(outputFile.c_str(), "w");
+
   std::string actions;
   float probs[28];
   StraightStrategy straight;
@@ -40,8 +43,8 @@ int main() {
 
         // second step is action.
         char action;
-        // 为了数据更丰富，有1%的几率不选择最优步而是走随机步
-        if (rand() % 100 == 0) {
+        // 为了数据更丰富，有5%的几率不选择最优步而是走随机步
+        if (rand() % 100 < 5) {
           g.get_actions(actions);
           std::uniform_int_distribution<int> dist(0, actions.size() - 1);
           int index = dist(rng);
@@ -54,7 +57,7 @@ int main() {
       }
 
       for (int i = 0; i < 20; i++) {
-        printf("%d ", g.board[i]);
+        fprintf(fp, "%d ", g.board[i]);
       }
       int totalTimes = 0;
       double totalScore = 0;
@@ -87,10 +90,13 @@ int main() {
       }
 
       double mean = totalScore / totalTimes;
-      printf("%.4lf\n", mean);
-      fflush(stdout);
+      fprintf(fp, "%.4lf\n", mean);
+      fflush(fp);
     }
   }
+}
 
+int main() {
+  work();
   return 0;
 }
