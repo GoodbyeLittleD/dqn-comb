@@ -1,4 +1,4 @@
-// this file is used to generate game data by playing with itself.
+// this file is used to benchmark by playing with itself.
 
 #include <random>
 
@@ -36,11 +36,11 @@ int main() {
 
       // second step is action.
       char action;
-      action = straight.getAction(g);
-      //   if (g.turn < 10) {
-      //   } else {
-      //     action = deep2.getAction(g);
-      //   }
+      if (g.turn < 15) {
+        action = straight.getAction(g);
+      } else {
+        action = deep2.getAction(g);
+      }
       // action = deep2.getAction(g);
       g.step(action);
       // printf("action = %d\n\n", (int)action);

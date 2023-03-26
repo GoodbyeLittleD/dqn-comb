@@ -35,14 +35,17 @@ int main() {
                            : a == 4 ? 1
                                     : 2) *
                               18 +
-                          (a == 1   ? 0
-                           : a == 5 ? 1
+                          (b == 1   ? 0
+                           : b == 5 ? 1
                                     : 2) *
                               6 +
-                          (a == 2   ? 0
-                           : a == 6 ? 1
+                          (c == 2   ? 0
+                           : c == 6 ? 1
                                     : 2) *
                               2;
+      if (a == 10 && b == 10 && c == 10) {
+        chanceAction = 54;
+      }
       if (!(g.flag & (1ull << chanceAction))) {
         chanceAction++;
       }

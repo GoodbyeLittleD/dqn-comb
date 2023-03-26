@@ -52,7 +52,7 @@ static const double vars[11] = {1.00, 0.721, 0.3993,  0.1947,  0.069, 0.0312,
 double getExpScore(const Game& g) {
   int cardList[20][3] = {0};
   for (int i = 0; i < 20; i++) {
-    if (g.board[i] >= 55) {
+    if (g.board[i] >= 54) {
       cardList[i][0] = cardList[i][1] = cardList[i][2] = 10;
     } else if (g.board[i] >= 0) {
       cardList[i][0] = get_left(g.board[i]);
@@ -61,9 +61,9 @@ double getExpScore(const Game& g) {
     }
   }
 
-  printf("calling getExpScore. cardlist: [%d %d %d] [%d %d %d] [%d %d %d] ...\n", cardList[0][0],
-         cardList[0][1], cardList[0][2], cardList[1][0], cardList[1][1], cardList[1][2],
-         cardList[2][0], cardList[2][1], cardList[2][2]);
+  // printf("calling getExpScore. cardlist: [%d %d %d] [%d %d %d] [%d %d %d] ...\n", cardList[0][0],
+  //        cardList[0][1], cardList[0][2], cardList[1][0], cardList[1][1], cardList[1][2],
+  //        cardList[2][0], cardList[2][1], cardList[2][2]);
 
   double ret = 0, waiting[10] = {0}, decide[20][2] = {0};
   int blockCount = 0, lastNum = 0, lastScore = 0, desired[10] = {0}, needs[10] = {0};
@@ -80,7 +80,7 @@ double getExpScore(const Game& g) {
     ret += cardList[0][0] + cardList[0][1] + cardList[0][2];
   }
 
-  printf("after first step, ret = %lf\n", ret);
+  // printf("after first step, ret = %lf\n", ret);
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 5; j++) {
@@ -157,7 +157,7 @@ double getExpScore(const Game& g) {
     }
   }
 
-  printf("after second step, ret = %lf\n", ret);
+  // printf("after second step, ret = %lf\n", ret);
 
   for (int i = 1; i <= 9; i++) {
     if (!(desired[i] < 5 || needs[i] < 3)) {
@@ -165,7 +165,7 @@ double getExpScore(const Game& g) {
     }
   }
 
-  printf("after third step, ret = %lf\n", ret);
+  // printf("after third step, ret = %lf\n", ret);
 
   scale = pow(blockCount / 20, 2);
   times = 0.4;
@@ -176,7 +176,7 @@ double getExpScore(const Game& g) {
     }
   }
 
-  printf("after fourth step, ret = %lf\n", ret);
+  // printf("after fourth step, ret = %lf\n", ret);
 
   scale *= times;
   for (int i = 0; i < 20; i++) {
@@ -187,7 +187,7 @@ double getExpScore(const Game& g) {
     }
   }
 
-  printf("after final step, ret = %lf\n", ret);
+  // printf("after final step, ret = %lf\n", ret);
 
   return ret;
 }
@@ -229,10 +229,6 @@ struct StraightStrategy {
       puts("evaluating ended game.");
       return 0;
     }
-    if (game.is_chance()) {
-      puts("evaluating game of chance state.");
-      return 0;
-    }
 
     std::string actions;
     game.get_actions(actions);
@@ -240,7 +236,7 @@ struct StraightStrategy {
     for (auto action : actions) {
       game.step(action);
       double score = getExpScore(game);
-      printf("trying to put on %d... expScore = %lf\n", (int)action, score);
+      // printf("trying to put on %d... expScore = %lf\n", (int)action, score);
       if (score > maxScore) {
         maxScore = score;
       }
@@ -257,10 +253,6 @@ struct DeepStrategy {
   char getAction(Game& game) {
     if (game.is_ended()) {
       puts("evaluating ended game.");
-      return 0;
-    }
-    if (game.is_chance()) {
-      puts("evaluating game of chance state.");
       return 0;
     }
 
@@ -306,10 +298,6 @@ struct DeepStrategy {
   double evaluate(Game& game) {
     if (game.is_ended()) {
       puts("evaluating ended game.");
-      return 0;
-    }
-    if (game.is_chance()) {
-      puts("evaluating game of chance state.");
       return 0;
     }
 
