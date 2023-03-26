@@ -1,5 +1,6 @@
 // this file is used to generate game data by playing with itself.
 
+#include <filesystem>
 #include <random>
 
 #include "game.h"
@@ -11,6 +12,12 @@ const int SAMPLE_TIMES = 200;
 std::mt19937 rng(std::random_device{}());
 
 int main() {
+  std::string outputFile;
+  for (int i = 1;; i++) {
+    outputFile = "data_" + std::to_string(i) + ".txt";
+    if (std::filesystem::exists(outputFile)) continue;
+    break;
+  }
   freopen("data.txt", "w", stdout);
   std::string actions;
   float probs[28];
