@@ -35,16 +35,16 @@ struct Game {
       }
     }
     if (flag & (1ull << 54)) {
-      int n = 20 - turn;
-      float p0 = (n * n - 91 * n + 1540) / (90 - 2 * n);
+      int n = turn;
+      float p0 = (90 - 2 * n) / (n * n - 91 * n + 1540.);
       for (int i = a.size() - 1; i >= 0; i--) {
         p[i] = p[i] / cnt * (1 - p0);
       }
       a += char(54);
       p[a.size() - 1] = p0;
     } else if (flag & (1ull << 55)) {
-      int n = 20 - turn;
-      float p0 = 1 / (46 - n);
+      int n = turn;
+      float p0 = 1. / (46 - n);
       for (int i = a.size() - 1; i >= 0; i--) {
         p[i] = p[i] / cnt * (1 - p0);
       }
@@ -55,6 +55,9 @@ struct Game {
         p[i] /= cnt;
       }
     }
+    // for (int i = 0; i < a.size(); i++) {
+    //   printf("p[%d] = %f\n", i, p[i]);
+    // }
   }
 
   void get_actions(std::string& a) const {

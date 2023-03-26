@@ -221,6 +221,7 @@ struct StraightStrategy {
     for (auto action : actions) {
       game.step(action);
       double score = getExpScore(game);
+      printf("trying to put on %d... expScore = %lf\n", (int)action, score);
       if (score > maxScore) {
         maxScore = score;
       }
