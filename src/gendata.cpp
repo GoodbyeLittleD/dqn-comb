@@ -34,7 +34,7 @@ int main() {
         // second step is action.
         char action;
         // 为了数据更丰富，有1%的几率不选择最优步而是走随机步
-        if (rand() < 0.01) {
+        if (rand() % 100 == 0) {
           g.get_actions(actions);
           std::uniform_int_distribution<int> dist(0, actions.size() - 1);
           int index = dist(rng);
