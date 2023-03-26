@@ -20,8 +20,8 @@ int main() {
   for (;;) {
     Game g;
     while (!g.is_ended()) {
-      auto currentScore = getExpScore(g);
-      printf("current score = %lf\n", currentScore);
+      // auto currentScore = getExpScore(g);
+      // printf("current score = %lf\n", currentScore);
 
       // first step is chance.
       g.get_chances(actions, probs);

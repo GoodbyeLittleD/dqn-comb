@@ -60,6 +60,11 @@ double getExpScore(const Game& g) {
       cardList[i][2] = get_right(g.board[i]);
     }
   }
+
+  printf("calling getExpScore. cardlist: [%d %d %d] [%d %d %d] [%d %d %d] ...\n", cardList[0][0],
+         cardList[0][1], cardList[0][2], cardList[1][0], cardList[1][1], cardList[1][2],
+         cardList[2][0], cardList[2][1], cardList[2][2]);
+
   double ret = 0, waiting[10] = {0}, decide[20][2] = {0};
   int blockCount = 0, lastNum = 0, lastScore = 0, desired[10] = {0}, needs[10] = {0};
   Status status;
@@ -74,6 +79,8 @@ double getExpScore(const Game& g) {
   } else {
     ret += cardList[0][0] + cardList[0][1] + cardList[0][2];
   }
+
+  printf("after first step, ret = %lf\n", ret);
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 5; j++) {
@@ -149,11 +156,17 @@ double getExpScore(const Game& g) {
       }
     }
   }
+
+  printf("after second step, ret = %lf\n", ret);
+
   for (int i = 1; i <= 9; i++) {
     if (!(desired[i] < 5 || needs[i] < 3)) {
       ret -= pow(desired[i] * vars[6] / 10, 2) * waiting[i];
     }
   }
+
+  printf("after third step, ret = %lf\n", ret);
+
   scale = pow(blockCount / 20, 2);
   times = 0.4;
   for (int i = 0; i < 20; i++) {
@@ -162,6 +175,9 @@ double getExpScore(const Game& g) {
       break;
     }
   }
+
+  printf("after fourth step, ret = %lf\n", ret);
+
   scale *= times;
   for (int i = 0; i < 20; i++) {
     if (abs(decide[i][0] - 2 < 1e-3)) {
@@ -170,6 +186,9 @@ double getExpScore(const Game& g) {
       ret -= scale * vars[9] * decide[i][1];
     }
   }
+
+  printf("after final step, ret = %lf\n", ret);
+
   return ret;
 }
 
