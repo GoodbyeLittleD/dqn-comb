@@ -61,10 +61,6 @@ double getExpScore(const Game& g) {
     }
   }
 
-  // printf("calling getExpScore. cardlist: [%d %d %d] [%d %d %d] [%d %d %d] ...\n", cardList[0][0],
-  //        cardList[0][1], cardList[0][2], cardList[1][0], cardList[1][1], cardList[1][2],
-  //        cardList[2][0], cardList[2][1], cardList[2][2]);
-
   // copy from https://github.com/jeffxzy/NumcombSolver
   double ret = 0, waiting[10] = {0}, decide[20][2] = {0};
   int blockCount = 0, lastNum = 0, desired[10] = {0}, needs[10] = {0};

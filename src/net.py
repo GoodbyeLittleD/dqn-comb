@@ -13,6 +13,7 @@ torch.backends.cudnn.benchmark = True
 NNArgs = namedtuple('NNArgs', ['num_channels', 'depth', 'kernel_size', 'lr_milestone', 'dense_net',
                                'lr', 'cv', 'cuda'], defaults=(40, False, 0.01, 1.5, torch.cuda.is_available()))
 
+CANONICAL_SHAPE = (3, 20, 9)
 
 def conv(in_channels, out_channels, stride=1, kernel_size=3):
     return nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
@@ -83,10 +84,9 @@ class ResidualBlock(nn.Module):
 
 
 class NNArch(nn.Module):
-    def __init__(self, game, args):
+    def __init__(self, args):
         super(NNArch, self).__init__()
-        # game params
-        in_channels, in_x, in_y = game.CANONICAL_SHAPE()
+        in_channels, in_x, in_y = CANONICAL_SHAPE
         self.dense_net = args.dense_net
 
         if not self.dense_net:
@@ -117,43 +117,48 @@ class NNArch(nn.Module):
                                256)
         self.v_fc1_relu = nn.ReLU(inplace=True)
         self.v_fc2 = nn.Linear(256, 1)
-        # self.v_softmax = nn.LogSoftmax(1)
+        #self.v_softmax = nn.LogSoftmax(1)
 
     def forward(self, s):
         with profiler.record_function("conv-layers"):
             if not self.dense_net:
                 s = self.conv1(s)
                 s = self.bn1(s)
+            #print('step 0', s)
             s = self.conv_layers(s)
+            #print('step 1', s)
 
         with profiler.record_function("v-head"):
             v = self.v_conv(s)
             v = self.v_bn(v)
+            #print('step 2', v)
             v = self.v_relu(v)
             v = self.v_flatten(v)
+            #print('step 3', v)
             v = self.v_fc1(v)
             v = self.v_fc1_relu(v)
+            #print('step 4', v)
             v = self.v_fc2(v)
-            v = self.v_softmax(v)
+            #v = self.v_softmax(v)
+            #print('step 5', v)
 
         return v
 
 
 class NNWrapper:
-    def __init__(self, game, args):
-        self.game = game
+    def __init__(self, args):
         self.args = args
-        self.nnet = NNArch(game, args)
+        self.nnet = NNArch(args)
         self.optimizer = optim.SGD(
             self.nnet.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-3)
 
         def lr_lambda(epoch):
             if epoch < 5:
-                return 1/3
+                return 1/30
             elif epoch > args.lr_milestone:
-                return 30/min(epoch, 600)         # after epoch 150, lr starts to decrease from 0.2 to a minimum of 0.05
+                return 3/min(epoch, 600)         # after epoch 150, lr starts to decrease from 0.2 to a minimum of 0.05
             else:
-                return 1
+                return 0.1
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(
             self.optimizer, lr_lambda=lr_lambda)
@@ -219,7 +224,10 @@ class NNWrapper:
 
                 # forward + backward + optimize
                 out_v = self.nnet(canonical)
+                # print(target_vs)
+                # print(out_v)
                 l_v = self.loss_v(target_vs, out_v)
+                # print(l_v)
                 total_loss = l_v
                 total_loss.backward()
                 self.optimizer.step()
@@ -271,8 +279,8 @@ class NNWrapper:
         return -self.cv * torch.sum(targets * outputs, axis=1)
 
     def loss_v(self, targets, outputs):
-        # return torch.sum((targets - outputs) ** 2) / targets.size()[0]
-        return -self.cv * torch.sum(targets * outputs) / targets.size()[0]
+        return torch.sum((targets - outputs) ** 2) / targets.size()[0]
+        # return -self.cv * torch.sum(targets * outputs) / targets.size()[0]
 
     def save_checkpoint(self, folder=os.path.join('data','checkpoint'), filename='checkpoint.pt'):
         filepath = os.path.join(folder, filename)
@@ -281,12 +289,11 @@ class NNWrapper:
             'state_dict': self.nnet.state_dict(),
             'opt_state': self.optimizer.state_dict(),
             'sch_state': self.scheduler.state_dict(),
-            'args': self.args,
-            'game': self.game
+            'args': self.args
         }, filepath)
 
     @staticmethod
-    def load_checkpoint(Game, folder=os.path.join('data','checkpoint'), filename='checkpoint.pt'):
+    def load_checkpoint(folder=os.path.join('data','checkpoint'), filename='checkpoint.pt'):
         if folder != '':
             filepath = os.path.join(folder, filename)
         else:
@@ -294,65 +301,9 @@ class NNWrapper:
         if not os.path.exists(filepath):
             raise Exception(f"No model in path {filepath}")
         checkpoint = torch.load(filepath)
-        assert checkpoint[
-            'game'] == Game, f'Mismatching game type when loading model: got: {checkpoint["game"].__name__} want: {Game.__name__}'
-        net = NNWrapper(checkpoint['game'], checkpoint['args'])
+        net = NNWrapper(checkpoint['args'])
         net.nnet.load_state_dict(checkpoint['state_dict'])
         net.optimizer.load_state_dict(checkpoint['opt_state'])
         net.scheduler.load_state_dict(checkpoint['sch_state'])
         return net
 
-
-# def bench_network():
-#     Game = alphazero.OpenTaflGS
-#     depth = 4
-#     channels = 12
-#     dense_net = True
-#     batch_size = 1024
-#     nnargs = NNArgs(num_channels=channels, depth=depth, dense_net=dense_net)
-
-#     nn = NNWrapper(Game, nnargs)
-
-#     cs = Game.CANONICAL_SHAPE()
-#     dummy_input = torch.randn(
-#         batch_size, cs[0], cs[1], cs[2], dtype=torch.float)
-#     if nnargs.cuda:
-#         dummy_input = dummy_input.contiguous().cuda()
-
-#     starter, ender = torch.cuda.Event(
-#         enable_timing=True), torch.cuda.Event(enable_timing=True)
-#     repetitions = 300
-#     timings = np.zeros((repetitions, 1))
-#     # Warm up.
-#     for _ in range(50):
-#         _ = nn.process(dummy_input)
-#     with torch.no_grad():
-#         for rep in range(repetitions):
-#             starter.record()
-#             _ = nn.process(dummy_input)
-#             ender.record()
-#             torch.cuda.synchronize()
-#             curr_time = starter.elapsed_time(ender)
-#             timings[rep] = curr_time
-#         latency = np.sum(timings) / repetitions
-#         print(f'Inference Time: {latency:0.3f} ms')
-
-#     total_time = 0
-#     with torch.no_grad():
-#         for rep in range(repetitions):
-#             starter.record()
-#             _ = nn.process(dummy_input)
-#             ender.record()
-#             torch.cuda.synchronize()
-#             curr_time = starter.elapsed_time(ender)/1000
-#             total_time += curr_time
-#     throughput = (repetitions*batch_size)/total_time
-#     print(f'Throughput: {throughput:0.3f} samples/s')
-
-#     # with torch.profiler.profile() as prof:
-#     #     _ = nn.process(dummy_input)
-#     # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-
-
-# if __name__ == '__main__':
-#     bench_network()
