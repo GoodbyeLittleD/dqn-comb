@@ -44,6 +44,7 @@ link_libraries(${TORCH_LIBRARIES})
 #===================
 add_executable(gendata src/game.cpp src/gendata.cpp)
 add_executable(test src/game.cpp src/test.cpp)
+add_executable(benchmark src/game.cpp src/benchmark.cpp)
 
 #===================
 # Post build actions

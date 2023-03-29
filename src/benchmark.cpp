@@ -1,4 +1,4 @@
-// this file is used to benchmark by playing with itself.
+// this file is used to generate game data by playing with itself.
 
 #include <random>
 
@@ -13,6 +13,9 @@ int main() {
   StraightStrategy straight;
   DeepStrategy deep;
   Deep2Strategy deep2;
+  RandomStrategy rando;
+  NetStrategy net;
+  // DeepNetStrategy net;
   int totalTimes = 0;
   double totalScore = 0;
   double totalSquare = 0;
@@ -27,23 +30,16 @@ int main() {
       char chanceAction = actions[chanceIndex];
       g.step(chanceAction);
       actions.clear();
-      //   if (chanceAction >= 55) {
-      //     printf("turn %d, square = *\n");
-      //   } else {
-      //     printf("turn %d, square = %d %d %d\n", g.turn, get_left(chanceAction),
-      //            get_mid(chanceAction), get_right(chanceAction));
-      //   }
 
       // second step is action.
       char action;
-      // if (g.turn < 15) {
-      //   action = straight.getAction(g);
-      // } else {
-      //   action = deep2.getAction(g);
-      // }
-      action = straight.getAction(g);
+      if (g.turn < 10) {
+        action = net.getAction(g);
+      } else {
+        action = deep2.getAction(g);
+      }
       g.step(action);
-      // printf("action = %d\n\n", (int)action);
+      printf("best_action = %d\n\n", (int)action);
     }
     int finalScore = g.get_score();
     totalScore += finalScore;

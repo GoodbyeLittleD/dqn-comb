@@ -33,34 +33,34 @@ int main() {
       char chanceAction;
       chanceAction = actions[chanceIndex];
 
-      // int a, b, c;
-      // printf("Input card (a,b,c): ");
-      // scanf("%d%d%d", &a, &b, &c);
-      // chanceAction = (a == 3   ? 0
-      //                 : a == 4 ? 1
-      //                          : 2) *
-      //                    18 +
-      //                (b == 1   ? 0
-      //                 : b == 5 ? 1
-      //                          : 2) *
-      //                    6 +
-      //                (c == 2   ? 0
-      //                 : c == 6 ? 1
-      //                          : 2) *
-      //                    2;
-      // if (a == 10 && b == 10 && c == 10) {
-      //   chanceAction = 54;
-      // }
-      // if (!(g.flag & (1ull << chanceAction))) {
-      //   chanceAction++;
-      // }
+      int a, b, c;
+      printf("Input card (a,b,c): ");
+      scanf("%d%d%d", &a, &b, &c);
+      chanceAction = (a == 3   ? 0
+                      : a == 4 ? 1
+                               : 2) *
+                         18 +
+                     (b == 1   ? 0
+                      : b == 5 ? 1
+                               : 2) *
+                         6 +
+                     (c == 2   ? 0
+                      : c == 6 ? 1
+                               : 2) *
+                         2;
+      if (a == 10 && b == 10 && c == 10) {
+        chanceAction = 54;
+      }
+      if (!(g.flag & (1ull << chanceAction))) {
+        chanceAction++;
+      }
 
-      // if (chanceAction >= 54) {
-      //   printf("turn %d, square = *\n");
-      // } else {
-      //   printf("turn %d, square = %d %d %d\n", g.turn, get_left(chanceAction),
-      //          get_mid(chanceAction), get_right(chanceAction));
-      // }
+      if (chanceAction >= 54) {
+        printf("turn %d, square = *\n");
+      } else {
+        printf("turn %d, square = %d %d %d\n", g.turn, get_left(chanceAction),
+               get_mid(chanceAction), get_right(chanceAction));
+      }
       g.step(chanceAction);
       actions.clear();
 
@@ -73,7 +73,7 @@ int main() {
         action = deep2.getAction(g);
       }
       g.step(action);
-      // printf("best_action = %d\n\n", (int)action);
+      printf("best_action = %d\n\n", (int)action);
     }
     int finalScore = g.get_score();
     totalScore += finalScore;
