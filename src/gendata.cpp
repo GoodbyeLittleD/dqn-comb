@@ -2,14 +2,16 @@
 
 #include <filesystem>
 #include <random>
+#include <thread>
 
 #include "game.h"
 #include "strategy.h"
+#include "unistd.h"
 
 // 每个样本随机的次数
-const int SAMPLE_TIMES = 200;
+const int SAMPLE_TIMES = 1024;
 // 线程数（TODO）
-const int NUMBER_THREADS = 8;
+const int NUMBER_THREADS = 6;
 
 std::mt19937 rng(std::random_device{}());
 
@@ -43,8 +45,8 @@ void work() {
 
         // second step is action.
         char action;
-        // 为了数据更丰富，有5%的几率不选择最优步而是走随机步
-        if (rand() % 100 < 5) {
+        // 为了数据更丰富，有一定几率不选择最优步而是走随机步
+        if (rand() % 100 < 99 - g.turn * 7) {
           g.get_actions(actions);
           std::uniform_int_distribution<int> dist(0, actions.size() - 1);
           int index = dist(rng);
@@ -79,7 +81,7 @@ void work() {
           if (game.turn < 15) {
             action = straight.getAction(game);
           } else {
-            action = deep2.getAction(game);
+            action = deep.getAction(game);
           }
           game.step(action);
         }
@@ -90,13 +92,17 @@ void work() {
       }
 
       double mean = totalScore / totalTimes;
-      fprintf(fp, "%.4lf\n", mean);
+      fprintf(fp, "%.6lf\n", mean);
       fflush(fp);
     }
   }
 }
 
 int main() {
+  for (int i = 1; i < NUMBER_THREADS; i++) {
+    new std::thread(work);
+    sleep(1);
+  }
   work();
   return 0;
 }

@@ -8,9 +8,10 @@ import net
 
 torch.set_printoptions(profile="full")
 CHECKPOINT_LOCATION = os.path.join('data', 'checkpoint')
+MODEL_LOCATION = os.path.join('data', 'model')
 NNARGS = net.NNArgs(
         num_channels = 12,
-        depth        = 8,
+        depth        = 4,
         lr_milestone = 50,
         dense_net    = True,
         kernel_size  = 5
@@ -62,6 +63,7 @@ def board_to_feature(board):
             feature[0, i, card_list[i][0] - 1] = 1
             feature[0, i, card_list[i][1] - 1] = 1
             feature[0, i, card_list[i][2] - 1] = 1
+    
     # The second feature [i, j] means number (j+1) is possible to 
     #   get score on its line.
     # In other words, a line has only number k or 10 or empty, then 
@@ -118,56 +120,33 @@ def board_to_feature(board):
                                 test = 1
                                 break
                 feature[3, i, k-1] = test
-
     return feature
 
+nn = net.NNWrapper.load_checkpoint(CHECKPOINT_LOCATION, '0040.pt')
+nn.nnet.eval()
 
-def create_init_net(nnargs):
-    nn = net.NNWrapper(nnargs)
-    nn.save_checkpoint(CHECKPOINT_LOCATION, f'0000.pt')
+input_tensor = torch.rand(1, 4, 20, 9).cuda()
+traced_script_module = torch.jit.trace(nn.nnet, input_tensor)
+traced_script_module.save(os.path.join(MODEL_LOCATION, 'model.pt'))
 
-class CustomDataset(torch.utils.data.Dataset):
-    def __init__(self, file_reg):
-        self.data = []
-        for file_path in glob.glob(file_reg):
-            with open(file_path, 'r') as f:
-                for line in f.readlines():
-                    line = line.strip().split()
-                    if len(line) != 21:
-                        print(f'skipped line of length {len(line)}')
-                        continue
-                    inputs = [int(x) for x in line[:20]]
-                    output = [float(line[20]) / 160]
-                    self.data.append((inputs, output))
+test_tensor = torch.zeros(1, 4, 20, 9)
+test_tensor[0, 0, 0].fill_(1)
+test_tensor[0, 1].fill_(1)
+test_tensor[0, 1, 0].fill_(0)
+#with torch.no_grad():
+output = nn.nnet.forward(test_tensor.contiguous().cuda()).item()
+print(output)
 
-    def __len__(self):
-        return len(self.data)
+output = nn.predict(test_tensor.squeeze(0))
+print(output)
 
-    def __getitem__(self, idx):
-        inputs, output = self.data[idx]
-        inputs = torch.from_numpy(board_to_feature(inputs))
-        output = torch.tensor(output)
-        return inputs, output
+while True:
+    print('Input board:', end=' ')
+    board = [int(i) for i in input().strip().split()]
+    input_tensor = torch.from_numpy(board_to_feature(board))
+    print(input_tensor)
+    output = nn.predict(input_tensor).item()
+    print(output * 160)
 
-# TODO: use aim
-class DummyRun:
-    def track(*args, **kwargs):
-        pass
-run = DummyRun()
+    
 
-create_init_net(NNARGS)
-
-dataset = CustomDataset('data/train/*/data*.txt')
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
-
-train_features, train_labels = next(iter(dataloader))
-
-total_train_steps = 0
-for iteration in range(500):
-    nn = net.NNWrapper.load_checkpoint(CHECKPOINT_LOCATION, f'{iteration:04d}.pt')
-    steps_to_train = len(dataloader) # TODO: calc steps to train
-    v_loss = nn.train(
-        dataloader, steps_to_train, run, iteration, total_train_steps)
-    print(f'{iteration=} {v_loss=}')
-    total_train_steps += steps_to_train
-    nn.save_checkpoint(CHECKPOINT_LOCATION, f'{iteration+1:04d}.pt')

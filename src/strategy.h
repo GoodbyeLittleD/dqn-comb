@@ -2,6 +2,11 @@
 #include <iostream>
 
 #include "game.h"
+#include "torch/script.h"
+#include "torch/torch.h"
+
+using torch::Tensor;
+using torch::nn::Module;
 
 static const int NUM[3][3] = {
     {3, 4, 8},
@@ -49,7 +54,7 @@ enum Status {
 static const double vars[11] = {1.00, 0.721, 0.3993,  0.1947,  0.069, 0.0312,
                                 0.75, 0.03,  0.08465, 0.08164, 18};
 
-double getExpScore(const Game& g) {
+inline double getExpScore(const Game& g) {
   int cardList[20][3] = {0};
   for (int i = 0; i < 20; i++) {
     if (g.board[i] >= 54) {
@@ -189,16 +194,32 @@ double getExpScore(const Game& g) {
   return ret;
 }
 
-struct StraightStrategy {
-  StraightStrategy() {}
+struct RandomStrategy {
+  std::mt19937 rng;
+  RandomStrategy() : rng(std::random_device{}()) {}
 
   char getAction(Game& game) {
     if (game.is_ended()) {
       puts("evaluating ended game.");
       return 0;
     }
-    if (game.is_chance()) {
-      puts("evaluating game of chance state.");
+
+    std::string actions;
+    game.get_actions(actions);
+
+    std::uniform_int_distribution<int> dist(0, actions.size() - 1);
+    int index = dist(rng);
+
+    return actions[index];
+  }
+};
+
+struct StraightStrategy {
+  StraightStrategy() {}
+
+  char getAction(Game& game) {
+    if (game.is_ended()) {
+      puts("evaluating ended game.");
       return 0;
     }
 
@@ -344,10 +365,6 @@ struct Deep2Strategy {
       puts("evaluating ended game.");
       return 0;
     }
-    if (game.is_chance()) {
-      puts("evaluating game of chance state.");
-      return 0;
-    }
 
     std::string actions;
     game.get_actions(actions);
@@ -379,6 +396,165 @@ struct Deep2Strategy {
       // printf("trying to put on %d... averageScore = %lf\n", (int)action, averageScore);
       if (averageScore > maxScore) {
         maxScore = averageScore;
+        bestAction = action;
+      }
+      game.redo(action);
+    }
+
+    // printf("best score: %lf\n", maxScore);
+    return bestAction;
+  }
+};
+
+struct NetStrategy {
+  torch::jit::script::Module model;
+  NetStrategy() {
+    model = torch::jit::load("../data/model/model.pt");
+    model.eval();
+    torch::NoGradGuard no_grad;
+    auto testTensor = torch::zeros({1, 4, 20, 9});
+    testTensor[0][0][0].fill_(1);
+    testTensor[0][1].fill_(1);
+    testTensor[0][1][0].fill_(0);
+    auto input = testTensor.cuda();
+    auto output = model.forward({input}).toTensor().item().toDouble();
+    printf("network load success. random output = %lf\n", output);
+  }
+
+  Tensor gameToTensor(const Game& game) {
+    auto result = torch::zeros({4, 20, 9}, torch::kFloat32);
+    // The first feature [0, i, j-1] means number j exist on position i
+    for (int i = 0; i < 20; i++) {
+      if (game.board[i] >= 54) {
+        // Specially [10, 10, 10] place got all features.
+        result[0][i].fill_(1);
+      } else if (game.board[i] >= 0) {
+        result[0][i][get_left(game.board[i]) - 1] = result[0][i][get_mid(game.board[i]) - 1] =
+            result[0][i][get_right(game.board[i]) - 1] = 1;
+      }
+    }
+    // The second feature [1, i, k-1] means only number k or 10 or empty exist
+    //   on this line.
+    for (int i = 1; i < 20; i++) {
+      // for each number group, e.g. 3, 4, 8
+      for (int j = 0; j < 3; j++) {
+        // for each number index
+        for (int k_ = 0; k_ < 3; k_++) {
+          // k is the current number we consider, e.g. k = 3
+          int k = NUM[j][k_];
+          // test means possible to get score on this line
+          bool test = true;
+          for (int l_ = 0; l_ < 5; l_++) {
+            // test_ means possible to get score on line l_
+            bool exist = false, test_ = true;
+            for (int n = 0; n < 5 && LINES[j][l_][n]; n++) {
+              // LINES[j][l_][n] is the current number on the line
+              if (LINES[j][l_][n] == i) exist = true;
+              // check if position on this line is either:
+              // 1. has number k
+              // 2. is empty
+              if (game.board[LINES[j][l_][n]] >= 0 &&
+                  result[0][LINES[j][l_][n]][k - 1].item().toFloat() == 0) {
+                test_ = false;
+              }
+            }
+            if (exist) {
+              test = test_;
+              break;
+            }
+          }
+          result[1][i][k - 1] = test ? 1 : 0;
+        }
+      }
+
+      // The thrid feature simply tells if there is any number on the line.
+      for (int j = 0; j < 3; j++) {
+        // for each number index
+        for (int k_ = 0; k_ < 3; k_++) {
+          // k is the current number we consider, e.g. k = 3
+          int k = NUM[j][k_];
+          // test means possible to get score on this line
+          bool test = false;
+          for (int l_ = 0; l_ < 5; l_++) {
+            // test_ means possible to get score on line l_
+            bool exist = false, test_ = false;
+            for (int n = 0; n < 5 && LINES[j][l_][n]; n++) {
+              // LINES[j][l_][n] is the current number on the line
+              if (LINES[j][l_][n] == i) exist = true;
+              // check if position on this line is not empty.
+              if (game.board[LINES[j][l_][n]] >= 0) {
+                test_ = true;
+              }
+            }
+            if (exist) {
+              test = test_;
+              break;
+            }
+          }
+          result[2][i][k - 1] = test ? 1 : 0;
+        }
+      }
+
+      // The fourth feature tells if there is any [10, 10, 10] on the line.
+      for (int j = 0; j < 3; j++) {
+        // for each number index
+        for (int k_ = 0; k_ < 3; k_++) {
+          // k is the current number we consider, e.g. k = 3
+          int k = NUM[j][k_];
+          // test means possible to get score on this line
+          bool test = false;
+          for (int l_ = 0; l_ < 5; l_++) {
+            // test_ means possible to get score on line l_
+            bool exist = false, test_ = false;
+            for (int n = 0; n < 5 && LINES[j][l_][n]; n++) {
+              // LINES[j][l_][n] is the current number on the line
+              if (LINES[j][l_][n] == i) exist = true;
+              // check if position on this line is 10, 10, 10.
+              if (game.board[LINES[j][l_][n]] >= 54) {
+                test_ = true;
+              }
+            }
+            if (exist) {
+              test = test_;
+              break;
+            }
+          }
+          result[3][i][k - 1] = test ? 1 : 0;
+        }
+      }
+    }
+    return result;
+  }
+
+  double evaluate(const Game& game) {
+    torch::NoGradGuard no_grad;
+    auto input = gameToTensor(game).unsqueeze_(0).cuda();
+    auto output = model.forward({input}).toTensor();
+    return output.item().toDouble();
+  }
+
+  char getAction(Game& game) {
+    if (game.is_ended()) {
+      puts("evaluating ended game.");
+      return 0;
+    }
+
+    std::string actions;
+    game.get_actions(actions);
+    double maxScore = -99;
+    char bestAction;
+    DeepStrategy deep;
+    for (auto action : actions) {
+      game.step(action);
+
+      // we calculate possible score for every next chance
+      double expectScore = evaluate(game);
+
+      // printf("trying to put on %d...\nboard = ", (int)action);
+      // for (int i = 0; i < 20; i++) printf("%d ", game.board[i]);
+      // printf("\nexpectScore = %lf\n", expectScore * 160);
+      if (expectScore > maxScore) {
+        maxScore = expectScore;
         bestAction = action;
       }
       game.redo(action);

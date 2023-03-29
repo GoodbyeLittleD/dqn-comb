@@ -13,7 +13,7 @@ torch.backends.cudnn.benchmark = True
 NNArgs = namedtuple('NNArgs', ['num_channels', 'depth', 'kernel_size', 'lr_milestone', 'dense_net',
                                'lr', 'cv', 'cuda'], defaults=(40, False, 0.01, 1.5, torch.cuda.is_available()))
 
-CANONICAL_SHAPE = (3, 20, 9)
+CANONICAL_SHAPE = (4, 20, 9)
 
 def conv(in_channels, out_channels, stride=1, kernel_size=3):
     return nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
@@ -120,27 +120,21 @@ class NNArch(nn.Module):
         #self.v_softmax = nn.LogSoftmax(1)
 
     def forward(self, s):
-        with profiler.record_function("conv-layers"):
-            if not self.dense_net:
-                s = self.conv1(s)
-                s = self.bn1(s)
-            #print('step 0', s)
-            s = self.conv_layers(s)
-            #print('step 1', s)
+        #with profiler.record_function("conv-layers"):
+        if not self.dense_net:
+            s = self.conv1(s)
+            s = self.bn1(s)
+        s = self.conv_layers(s)
 
-        with profiler.record_function("v-head"):
-            v = self.v_conv(s)
-            v = self.v_bn(v)
-            #print('step 2', v)
-            v = self.v_relu(v)
-            v = self.v_flatten(v)
-            #print('step 3', v)
-            v = self.v_fc1(v)
-            v = self.v_fc1_relu(v)
-            #print('step 4', v)
-            v = self.v_fc2(v)
-            #v = self.v_softmax(v)
-            #print('step 5', v)
+        #with profiler.record_function("v-head"):
+        v = self.v_conv(s)
+        v = self.v_bn(v)
+        v = self.v_relu(v)
+        v = self.v_flatten(v)
+        v = self.v_fc1(v)
+        v = self.v_fc1_relu(v)
+        v = self.v_fc2(v)
+        #v = self.v_softmax(v)
 
         return v
 
@@ -154,9 +148,9 @@ class NNWrapper:
 
         def lr_lambda(epoch):
             if epoch < 5:
-                return 1/30
+                return 0.1/3
             elif epoch > args.lr_milestone:
-                return 3/min(epoch, 600)         # after epoch 150, lr starts to decrease from 0.2 to a minimum of 0.05
+                return 0.01
             else:
                 return 0.1
 
@@ -269,11 +263,10 @@ class NNWrapper:
         self.nnet.eval()
         with torch.no_grad():
             v = self.nnet(batch)
-            res = torch.exp(v)
         # end.record()
         # torch.cuda.synchronize()
         # print(start.elapsed_time(end))
-        return res
+        return v
 
     def sample_loss_v(self, targets, outputs):
         return -self.cv * torch.sum(targets * outputs, axis=1)
@@ -291,6 +284,12 @@ class NNWrapper:
             'sch_state': self.scheduler.state_dict(),
             'args': self.args
         }, filepath)
+    
+    def save_model(self, folder=os.path.join('data','checkpoint'), filename='model.pth'):
+        filepath = os.path.join(folder, filename)
+        os.makedirs(folder, exist_ok=True)
+        self.nnet.eval()
+        torch.save(self.nnet, filepath)
 
     @staticmethod
     def load_checkpoint(folder=os.path.join('data','checkpoint'), filename='checkpoint.pt'):
