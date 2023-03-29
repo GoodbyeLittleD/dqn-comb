@@ -44,3 +44,15 @@ link_libraries(${TORCH_LIBRARIES})
 #===================
 add_executable(gendata src/game.cpp src/gendata.cpp)
 add_executable(test src/game.cpp src/test.cpp)
+
+#===================
+# Post build actions
+#===================
+if (MSVC)
+  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
+  add_custom_command(TARGET demo
+                     POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                     ${TORCH_DLLS}
+                     $<TARGET_FILE_DIR:demo>)
+endif (MSVC)
