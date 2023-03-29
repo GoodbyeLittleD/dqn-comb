@@ -39,7 +39,6 @@ int main() {
         action = deep2.getAction(g);
       }
       g.step(action);
-      printf("best_action = %d\n\n", (int)action);
     }
     int finalScore = g.get_score();
     totalScore += finalScore;
