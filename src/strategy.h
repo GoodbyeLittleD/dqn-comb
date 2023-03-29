@@ -527,11 +527,34 @@ struct NetStrategy {
     return result;
   }
 
-  double evaluate(const Game& game) {
+  double evaluate(Game& game) {
+    // torch::NoGradGuard no_grad;
+    // auto input = gameToTensor(game).unsqueeze_(0).cuda();
+    // auto output = model.forward({input}).toTensor();
+    // return output.item().toDouble();
+
+    if (game.is_ended()) {
+      puts("evaluating ended game.");
+      return 0;
+    }
+
+    std::string actions;
+    game.get_actions(actions);
+    double maxScore = -99;
+    char bestAction;
+    DeepStrategy deep;
+    std::vector<Tensor> tensors;
+    tensors.reserve(actions.size());
+    for (auto action : actions) {
+      game.step(action);
+      tensors.push_back(gameToTensor(game).unsqueeze_(0));
+      game.redo(action);
+    }
+
     torch::NoGradGuard no_grad;
-    auto input = gameToTensor(game).unsqueeze_(0).cuda();
+    auto input = torch::cat(tensors, 0).contiguous().cuda();
     auto output = model.forward({input}).toTensor();
-    return output.item().toDouble();
+    return torch::max(output).item().toDouble();
   }
 
   char getAction(Game& game) {
@@ -569,6 +592,55 @@ struct NetStrategy {
     auto output = model.forward({input}).toTensor();
     auto maxIndex = torch::argmax(output).item().toInt();
     bestAction = actions[maxIndex];
+    return bestAction;
+  }
+};
+
+struct DeepNetStrategy {
+  NetStrategy net;
+  DeepNetStrategy() : net() {}
+
+  char getAction(Game& game) {
+    if (game.is_ended()) {
+      puts("evaluating ended game.");
+      return 0;
+    }
+
+    std::string actions;
+    game.get_actions(actions);
+    double maxScore = -99;
+    char bestAction;
+    for (auto action : actions) {
+      game.step(action);
+
+      // we calculate possible score for every next chance
+      double averageScore = 0;
+
+      if (game.is_ended()) {
+        averageScore = game.get_score();
+      } else {
+        float probs[28];
+        std::string chances;
+        game.get_chances(chances, probs);
+        for (int i = 0; i < chances.size(); i++) {
+          game.step(chances[i]);
+
+          double innerScore = net.evaluate(game);
+          averageScore += innerScore * probs[i];
+
+          game.redo(chances[i]);
+        }
+      }
+
+      // printf("trying to put on %d... averageScore = %lf\n", (int)action, averageScore);
+      if (averageScore > maxScore) {
+        maxScore = averageScore;
+        bestAction = action;
+      }
+      game.redo(action);
+    }
+
+    // printf("best score: %lf\n", maxScore);
     return bestAction;
   }
 };

@@ -14,7 +14,8 @@ int main() {
   DeepStrategy deep;
   Deep2Strategy deep2;
   RandomStrategy rando;
-  NetStrategy net;
+  // NetStrategy net;
+  DeepNetStrategy net;
   int totalTimes = 0;
   double totalScore = 0;
   double totalSquare = 0;
