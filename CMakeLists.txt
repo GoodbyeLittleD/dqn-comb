@@ -8,7 +8,7 @@ project(dqn-comb)
 #==================
 # C++ Standard
 #==================
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -42,7 +42,7 @@ link_libraries(${TORCH_LIBRARIES})
 #===================
 # Compile executables
 #===================
-add_executable(gendata src/game.cpp src/gendata.cpp)
+add_executable(gendata src/game.cpp src/gendata_2.cpp)
 add_executable(test src/game.cpp src/test.cpp)
 add_executable(benchmark src/game.cpp src/benchmark.cpp)
 
@@ -51,9 +51,9 @@ add_executable(benchmark src/game.cpp src/benchmark.cpp)
 #===================
 if (MSVC)
   file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET dqn-comb
+  add_custom_command(TARGET gendata
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
                      ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:dqn-comb>)
+                     $<TARGET_FILE_DIR:gendata>)
 endif (MSVC)

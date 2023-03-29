@@ -14,8 +14,8 @@ int main() {
   DeepStrategy deep;
   Deep2Strategy deep2;
   RandomStrategy rando;
-  // NetStrategy net;
-  DeepNetStrategy net;
+  NetStrategy net;
+  // DeepNetStrategy net;
   int totalTimes = 0;
   double totalScore = 0;
   double totalSquare = 0;
@@ -56,7 +56,7 @@ int main() {
       }
 
       if (chanceAction >= 54) {
-        printf("turn %d, square = *\n");
+        printf("turn %d, square = *\n", g.turn);
       } else {
         printf("turn %d, square = %d %d %d\n", g.turn, get_left(chanceAction),
                get_mid(chanceAction), get_right(chanceAction));
@@ -77,7 +77,7 @@ int main() {
     }
     int finalScore = g.get_score();
     totalScore += finalScore;
-    totalSquare += finalScore * finalScore;
+    totalSquare += 1ll * finalScore * finalScore;
     totalTimes++;
     double mean = totalScore / totalTimes;
     double sd = sqrt(totalSquare / totalTimes - mean * mean);
