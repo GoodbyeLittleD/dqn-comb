@@ -30,6 +30,7 @@ void work() {
   StraightStrategy straight;
   DeepStrategy deep;
   Deep2Strategy deep2;
+  NetStrategy net;
 
   for (;;) {
     for (int steps = 1; steps <= 18; steps++) {
