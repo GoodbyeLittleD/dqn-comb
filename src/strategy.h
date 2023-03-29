@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #include "game.h"
 #include "torch/script.h"
@@ -544,23 +545,30 @@ struct NetStrategy {
     double maxScore = -99;
     char bestAction;
     DeepStrategy deep;
+    std::vector<Tensor> tensors;
+    tensors.reserve(actions.size());
     for (auto action : actions) {
       game.step(action);
 
-      // we calculate possible score for every next chance
-      double expectScore = evaluate(game);
-
+      // double expectScore = evaluate(game);
       // printf("trying to put on %d...\nboard = ", (int)action);
       // for (int i = 0; i < 20; i++) printf("%d ", game.board[i]);
       // printf("\nexpectScore = %lf\n", expectScore * 160);
-      if (expectScore > maxScore) {
-        maxScore = expectScore;
-        bestAction = action;
-      }
+      // if (expectScore > maxScore) {
+      //   maxScore = expectScore;
+      //   bestAction = action;
+      // }
+
+      tensors.push_back(gameToTensor(game).unsqueeze_(0));
+
       game.redo(action);
     }
 
-    // printf("best score: %lf\n", maxScore);
+    torch::NoGradGuard no_grad;
+    auto input = torch::cat(tensors, 0).contiguous().cuda();
+    auto output = model.forward({input}).toTensor();
+    auto maxIndex = torch::argmax(output).item().toInt();
+    bestAction = actions[maxIndex];
     return bestAction;
   }
 };
