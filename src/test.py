@@ -122,7 +122,7 @@ def board_to_feature(board):
                 feature[3, i, k-1] = test
     return feature
 
-nn = net.NNWrapper.load_checkpoint(CHECKPOINT_LOCATION, '0060.pt')
+nn = net.NNWrapper.load_checkpoint(CHECKPOINT_LOCATION, '0075.pt')
 nn.nnet.eval()
 
 input_tensor = torch.rand(1, 4, 20, 9).cuda()

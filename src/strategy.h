@@ -410,7 +410,7 @@ struct Deep2Strategy {
 struct NetStrategy {
   torch::jit::script::Module model;
   NetStrategy() {
-    model = torch::jit::load("../data/model/model.pt");
+    model = torch::jit::load("model.pt");
     model.eval();
     torch::NoGradGuard no_grad;
     auto testTensor = torch::zeros({1, 4, 20, 9});

@@ -10,15 +10,15 @@
 
 // 每个样本随机的次数
 const int SAMPLE_TIMES = 1024;
-// 线程数（TODO）
-const int NUMBER_THREADS = 6;
+// 线程数
+const int NUMBER_THREADS = 2;
 
 std::mt19937 rng(std::random_device{}());
 
 void work() {
   std::string outputFile;
-  for (int i = 1;; i++) {
-    outputFile = "data_" + std::to_string(i) + ".txt";
+  for (unsigned i = rand();; i++) {
+    outputFile = std::to_string(i) + ".tar.gz";
     if (std::filesystem::exists(outputFile)) continue;
     break;
   }
@@ -26,12 +26,13 @@ void work() {
 
   std::string actions;
   float probs[28];
+  RandomStrategy rando;
   StraightStrategy straight;
   DeepStrategy deep;
   Deep2Strategy deep2;
 
   for (;;) {
-    for (int steps = 1; steps <= 10; steps++) {
+    for (int steps = 1; steps <= 18; steps++) {
       // generate games with turn = steps
       Game g;
       while (g.turn < steps) {
@@ -45,15 +46,15 @@ void work() {
 
         // second step is action.
         char action;
-        // 为了数据更丰富，有一定几率不选择最优步而是走随机步
-        if (rand() % 100 < 99 - g.turn * 7) {
-          g.get_actions(actions);
-          std::uniform_int_distribution<int> dist(0, actions.size() - 1);
-          int index = dist(rng);
-          action = actions[index];
-          actions.clear();
+        // 10% chance of exploration
+        if (rand() % 100 < 10 || g.turn == steps - 1) {
+          action = rando.getAction(g);
         } else {
-          action = straight.getAction(g);
+          if (g.turn < 10) {
+            action = net.getAction(g);
+          } else {
+            action = deep2.getAction(g);
+          }
         }
         g.step(action);
       }
@@ -78,10 +79,11 @@ void work() {
 
           // second step is action.
           char action;
-          if (game.turn < 15) {
-            action = straight.getAction(game);
+          if (g.turn < 10) {
+            action = net.getAction(g);
           } else {
-            action = deep.getAction(game);
+            action = deep2.getAction(g);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
           }
           game.step(action);
         }
