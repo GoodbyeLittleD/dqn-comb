@@ -18,7 +18,7 @@ std::mt19937 rng(std::random_device{}());
 void work() {
   std::string outputFile;
   for (unsigned i = rand();; i++) {
-    outputFile = std::to_string(i) + ".tar.gz";
+    outputFile = "C:\\init\\" +  std::to_string(i) + ".log";
     if (std::filesystem::exists(outputFile)) continue;
     break;
   }
@@ -80,10 +80,10 @@ void work() {
 
           // second step is action.
           char action;
-          if (g.turn < 10) {
-            action = net.getAction(g);
+          if (game.turn < 10) {
+            action = net.getAction(game);
           } else {
-            action = deep2.getAction(g);
+            action = deep2.getAction(game);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
           }
           game.step(action);

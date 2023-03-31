@@ -408,9 +408,10 @@ struct Deep2Strategy {
 };
 
 struct NetStrategy {
+  std::string model_path;
   torch::jit::script::Module model;
-  NetStrategy() {
-    model = torch::jit::load("model.pt");
+  NetStrategy(std::string path = "model.pt"): model_path(path) {
+    model = torch::jit::load(model_path.c_str());
     model.eval();
     torch::NoGradGuard no_grad;
     auto testTensor = torch::zeros({1, 4, 20, 9});

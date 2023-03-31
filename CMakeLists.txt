@@ -42,7 +42,7 @@ link_libraries(${TORCH_LIBRARIES})
 #===================
 # Compile executables
 #===================
-add_executable(gendata src/game.cpp src/gendata_2.cpp)
+add_executable(torrentcli src/game.cpp src/gendata_2.cpp)
 add_executable(test src/game.cpp src/test.cpp)
 add_executable(benchmark src/game.cpp src/benchmark.cpp)
 
@@ -51,9 +51,9 @@ add_executable(benchmark src/game.cpp src/benchmark.cpp)
 #===================
 if (MSVC)
   file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET gendata
+  add_custom_command(TARGET benchmark
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
                      ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:gendata>)
+                     $<TARGET_FILE_DIR:benchmark>)
 endif (MSVC)

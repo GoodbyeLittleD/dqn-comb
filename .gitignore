@@ -1,3 +1,5 @@
 build/
 data/
 src/__pycache__/
+out/
+.vs/
