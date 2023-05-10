@@ -4,21 +4,21 @@
 #include <filesystem>
 #include <random>
 #include <thread>
+#include <mutex>
 
 #include "game.h"
 #include "strategy.h"
 
-// 每个样本随机的次数
-const int SAMPLE_TIMES = 1024;
-// 线程数
-const int NUMBER_THREADS = 6;
+const int SAMPLE_TIMES = 10;
+const int NUMBER_THREADS = 1;
 
 std::mt19937 rng(std::random_device{}());
+std::mutex mutex;
 
 void work() {
   std::string outputFile;
   for (unsigned i = rand();; i++) {
-    outputFile = "C:\\init\\" + std::to_string(i) + ".log";
+    outputFile = std::to_string(i) + ".log";
     if (std::filesystem::exists(outputFile)) continue;
     break;
   }
@@ -26,11 +26,14 @@ void work() {
 
   std::string actions;
   float probs[28];
+  char action;
+
   RandomStrategy rando;
   StraightStrategy straight;
   DeepStrategy deep;
   Deep2Strategy deep2;
   NetStrategy net;
+  LastTurnEvaluator lastman;
 
   for (;;) {
     for (int steps = 1; steps <= 18; steps++) {
@@ -46,13 +49,14 @@ void work() {
         actions.clear();
 
         // second step is action.
-        char action;
         // 10% chance of exploration
         if (rand() % 100 < 10 || g.turn == steps - 1) {
           action = rando.getAction(g);
         } else {
           if (g.turn < 10) {
+            mutex.lock();
             action = net.getAction(g);
+            mutex.unlock();
           } else {
             action = deep2.getAction(g);
           }
@@ -63,39 +67,54 @@ void work() {
       for (int i = 0; i < 20; i++) {
         fprintf(fp, "%d ", g.board[i]);
       }
-      int totalTimes = 0;
-      double totalScore = 0;
+      fflush(fp);
 
-      while (totalTimes < SAMPLE_TIMES) {
-        Game game = g;
+      g.get_chances(actions, probs);
+      double meanScore = 0;
 
-        while (!game.is_ended()) {
-          // first step is chance.
-          game.get_chances(actions, probs);
-          std::discrete_distribution<int> dist(probs, probs + actions.size());
-          int chanceIndex = dist(rng);
-          char chanceAction = actions[chanceIndex];
-          game.step(chanceAction);
-          actions.clear();
+      for (int i = 0; i < actions.size(); i++) {
+        int totalTimes = 0;
+        double totalScore = 0;
+        g.step(actions[i]);
 
-          // second step is action.
-          char action;
-          if (game.turn < 10) {
-            action = net.getAction(game);
-          } else {
-            action = deep2.getAction(game);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        while (totalTimes < SAMPLE_TIMES) {
+          Game game = g;
+
+          while (game.turn < 19) {
+            if (game.is_chance()) {
+              std::string actions_;
+              float probs[28];
+              game.get_chances(actions_, probs);
+              std::discrete_distribution<int> dist(probs, probs + actions_.size());
+              int chanceIndex = dist(rng);
+              char chanceAction = actions_[chanceIndex];
+              game.step(chanceAction);
+            }
+
+            if (game.turn < 10) {
+              mutex.lock();
+              action = net.getAction(game);
+              mutex.unlock();
+            } else {
+              action = deep2.getAction(game);
+              std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            game.step(action);
           }
-          game.step(action);
+
+          double finalScore = lastman.evaluate(game);  // game.get_score();
+          totalScore += finalScore;
+          printf("%lf\n", finalScore);
+          totalTimes++;
         }
 
-        int finalScore = game.get_score();
-        totalScore += finalScore;
-        totalTimes++;
+        g.redo(actions[i]);
+        meanScore += (totalScore / totalTimes) * probs[i];
       }
 
-      double mean = totalScore / totalTimes;
-      fprintf(fp, "%.6lf\n", mean);
+      actions.clear();
+
+      fprintf(fp, "%.6lf\n", meanScore);
       fflush(fp);
     }
   }

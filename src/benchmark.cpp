@@ -33,7 +33,7 @@ int main() {
 
       // second step is action.
       char action;
-      if (g.turn < 10) {
+      if (g.turn < 18) {
         action = net.getAction(g);
       } else {
         action = deep2.getAction(g);

@@ -215,6 +215,39 @@ struct RandomStrategy {
   }
 };
 
+struct LastTurnEvaluator {
+  LastTurnEvaluator() {}
+
+  double evaluate(Game& game) {
+    if (game.turn != 19 || !game.is_chance()) {
+      puts("last turn evaluator called unexpectedly.");
+      return 0;
+    }
+
+    // we calculate possible score for every next chance
+    double averageScore = 0;
+    char position = 0;
+    for (int i = 1; i < 20; i++)
+      if (game.board[i] == -1) {
+        position = i;
+        break;
+      }
+
+    float probs[28];
+    std::string chances;
+    game.get_chances(chances, probs);
+    for (int i = 0; i < chances.size(); i++) {
+      game.step(chances[i]);
+      game.step(position);
+      averageScore += game.get_score() * probs[i];
+      game.redo(position);
+      game.redo(chances[i]);
+    }
+
+    return averageScore;
+  }
+};
+
 struct StraightStrategy {
   StraightStrategy() {}
 
@@ -254,7 +287,12 @@ struct StraightStrategy {
     double maxScore = -99;
     for (auto action : actions) {
       game.step(action);
-      double score = getExpScore(game);
+      double score;
+      if (game.is_ended()) {
+        score = game.get_score();
+      } else {
+        score = getExpScore(game);
+      }
       // printf("trying to put on %d... expScore = %lf\n", (int)action, score);
       if (score > maxScore) {
         maxScore = score;
@@ -410,7 +448,7 @@ struct Deep2Strategy {
 struct NetStrategy {
   std::string model_path;
   torch::jit::script::Module model;
-  NetStrategy(std::string path = "model.pt"): model_path(path) {
+  NetStrategy(std::string path = "model.pt") : model_path(path) {
     model = torch::jit::load(model_path.c_str());
     model.eval();
     torch::NoGradGuard no_grad;

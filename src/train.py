@@ -10,7 +10,7 @@ torch.set_printoptions(profile="full")
 CHECKPOINT_LOCATION = os.path.join('data', 'checkpoint')
 NNARGS = net.NNArgs(
         num_channels = 12,
-        depth        = 8,
+        depth        = 16,
         lr_milestone = 50,
         dense_net    = True,
         kernel_size  = 5
@@ -125,6 +125,7 @@ def board_to_feature(board):
 def create_init_net(nnargs):
     nn = net.NNWrapper(nnargs)
     nn.save_checkpoint(CHECKPOINT_LOCATION, f'0000.pt')
+    return nn
 
 class CustomDataset(torch.utils.data.Dataset):
     def __init__(self, file_reg):
@@ -139,6 +140,7 @@ class CustomDataset(torch.utils.data.Dataset):
                     inputs = [int(x) for x in line[:20]]
                     output = [float(line[20]) / 160]
                     self.data.append((inputs, output))
+                    self.data.append(([inputs[0]] + inputs[:0:-1], output))
 
     def __len__(self):
         return len(self.data)
@@ -155,9 +157,9 @@ class DummyRun:
         pass
 run = DummyRun()
 
-create_init_net(NNARGS)
+nn = create_init_net(NNARGS)
 
-dataset = CustomDataset('data/train/*/data*.txt')
+dataset = CustomDataset('data/train/round_3/*.log')
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
 
 train_features, train_labels = next(iter(dataloader))

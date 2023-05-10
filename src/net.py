@@ -141,6 +141,8 @@ class NNArch(nn.Module):
 
 class NNWrapper:
     def __init__(self, args):
+        torch.set_float32_matmul_precision('high')
+
         self.args = args
         self.nnet = NNArch(args)
         self.optimizer = optim.SGD(

@@ -42,7 +42,8 @@ link_libraries(${TORCH_LIBRARIES})
 #===================
 # Compile executables
 #===================
-add_executable(torrentcli src/game.cpp src/gendata_2.cpp)
+set(CMAKE_BUILD_TYPE "Release") # Set build type to Release
+add_executable(torrentcli src/game.cpp src/gendata_3.cpp)
 add_executable(test src/game.cpp src/test.cpp)
 add_executable(benchmark src/game.cpp src/benchmark.cpp)
 
